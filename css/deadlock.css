@@ -1,0 +1,130 @@
+#main{
+    position: relative;
+    height: 700px;
+}
+
+.btn_group{
+    display: inline-block;
+    position: absolute;
+    margin: 0;
+    padding: 0;
+}
+
+#process_act{    
+    left: 40px;
+    top: 15px;
+}
+
+#resource_act{    
+    right: 40px;
+    top: 15px;
+}
+
+
+.btn_group h3{
+    text-align: center;
+    margin: 0;
+}
+
+.btn_group li{
+    display: inline-block;
+    margin: 0 !important;
+    padding: 5px;
+    border: none;
+    outline: none;
+    background: blue;
+    color: white;
+    box-shadow: 0 0 5px blue;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn_group li:first-of-type{
+    border-radius: 7px 0 0 7px;
+}
+.btn_group li:last-of-type{
+    border-radius: 0 7px 7px 0;  
+}
+
+#canvas {
+    position: relative;
+    top: 100px;
+    height: 580px;
+}
+
+#canvas .resource{
+	display: inline-block;
+	padding: 20px;
+	background-color: red;
+	color: white;
+	position: absolute;
+	left: 45%;
+    text-align: center;
+}
+
+#canvas .process{
+	display: inline-block;
+	padding: 20px;
+	background-color: blue;
+	color: white;	
+	position: absolute;
+	border-radius: 100px;
+    text-align: center; 
+}
+
+#canvas .arrow{
+	display: inline-block;
+	position: absolute;
+	height: 3px;
+}
+
+#canvas .arrow:after{
+	position: absolute;
+	border-style: solid;
+	border-width: 13315px 132135px 0;
+	border-color: #FFFFFF;
+	display: block;
+	width: 0;
+	z-index: 10;
+	top: 20px;
+	left: 45%;
+}
+
+
+form.pr{
+	position: absolute;
+    display: none;
+	padding: 5px;
+	box-shadow: 0 0 10px #999;
+	z-index: 100;
+	background: rgba(0,0,0,.8);
+}
+
+#proreq{
+    top: 80px;
+    left: 40px;
+}
+
+#resass{
+    top: 80px;
+    right: 30px;
+}
+
+form.pr .txt{
+	padding: 5px;
+	width: 200px;
+    display: block;
+}
+
+
+form.pr input[type="submit"]{
+	background: #09f;
+	box-shadow: 0 0 5px #777;	
+	color: white !important;
+	text-transform:uppercase;
+	padding: 5px;
+	text-align: center;
+	font-weight: bold;
+    outline: none;
+    border: none;
+}
