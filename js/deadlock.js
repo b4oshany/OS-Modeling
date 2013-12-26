@@ -36,7 +36,6 @@ $('.bn').click(function(e){
 });
 
 
-
 $('#proreq').submit(function(e){
     var su = $(this);
     var pid = this['process'].value;
@@ -84,6 +83,12 @@ function Command(){
         }
     }    
     
+    this.error = function(where, message){
+        $(where).prepend('<div class="err">'+message+'</div>');
+        setTimeout(function(e){
+            $('.err').remove();
+        }, 5000);
+    }
     
      this.resourceExists = function(resource_id){
         for(var x in resources){
@@ -146,7 +151,8 @@ function Command(){
     
     this.mapProcessToResource = function(process_id, resource_id){        
 		var resource = this.getResource(resource_id);
-		var process = this.getProcess(process_id);	           
+		var process = this.getProcess(process_id);
+        console.log(arrows);
         if(resource != false && process != false){
             var rtop = resource.div.offsetTop;   
             var rleft = resource.div.offsetLeft;
@@ -159,18 +165,21 @@ function Command(){
             var arrow = document.createElement('div');
             arrow.setAttribute('id', process_id+'->'+resource_id);
 			arrow.setAttribute('class', 'arrow');
-            arrow.style.top = (ptop + (pheight/2))+'px';
+            arrow.style.top = (ptop)+'px';
 			arrow.style.left = (pleft+pwidth)+'px'
 			arrow.style.width = (rleft-(pleft+pwidth))+'px';
 			arrow.style.backgroundColor = 'blue';
             var effect = new Animation();
             var x = rleft - (pleft + pwidth);
             var y = rtop - ptop;
-            var thea = Math.atan2(y,x)*(180/Math.PI);
-           // console.log(thea);  
+            var thea = Math.atan2(y,x)*(180/Math.PI);  
             effect.rotate(arrow, thea);
-			canvas.appendChild(arrow);
-            arrows.push(arrow);
+            console.log(this.arrowExists(process_id+'->'+resource_id));
+            if(this.arrowExists(process_id+'->'+resource_id) == false){
+                canvas.appendChild(arrow);
+                arrow.style.top = (ptop + (pheight/2))+'px';
+                arrows.push(arrow);
+            }
         }
     }
     
@@ -191,18 +200,26 @@ function Command(){
 				resources[x].processes.splice(resources[x].processes.indexOf(process_id), 1);
 			}
 		}    
-        console.log('removal attempt');
-        console.log(arrows);
+        //console.log('removal attempt');
+        //console.log(arrows);
         for(var x in arrows){
-            console.log(x);
-            console.log(arrows[x]);
+            //console.log(arrows[x]);
             if((arrows[x].getAttribute('id')).indexOf(process_id+'->') != -1 || (arrows[x].getAttribute('id')).indexOf(process_id+'<-') != -1){ 
-                console.log(arrows[x]);
+                //console.log(arrows[x])
                 canvas.removeChild(arrows[x]);   
                 arrows.splice(x,1);
             }
         }
 	}
+    
+    this.arrowExists = function(arrow){
+        for(var x in arrows){
+            if((arrows[x].getAttribute('id')).indexOf(arrow) != -1){ 
+                return x;
+            }
+        }
+        return false;
+    }
 	
 	this.remove_resource = function(resource_id){
 		for(var x in processes){
