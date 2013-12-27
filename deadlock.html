@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="css/deadlock.css" />
+</head>
+<body>
+    <div id="main">
+        <ul id="process_act" class="btn_group">
+        <h3>Process Activity</h3>
+        <li class="create bn_process bn">create</li>
+        <li class="request bn_process bn">request</li>
+        <li class="release bn_process bn">release</li>
+        <li class="kill bn_process bn">kill</li>
+        </ul>
+        <ul id="resource_act" class="btn_group">
+        <h3>Resource Activity</h3>
+        <li class="create bn_resource bn" >create</li>
+        <li class="assign bn_resource bn" >assign</li>
+        <li class="release bn_resource bn" >release</li>
+        <li class="kill bn_resource bn" >kill</li>
+        </ul>
+        <section id="canvas">    
+        </section> 
+    <form id="proreq" class="pr">
+        <input class='txt' type="text" placeholder="Enter process id" required name="process" />
+        <input class="txt" type="text" placeholder="Enter resource id" required name="resource" />
+        <input type="submit" value="request" />
+    </form>
+    <form id="resass" class="pr">
+        <input class="txt" type="text" placeholder="Enter resource id" required name="resource" />
+        <input class='txt' type="text" placeholder="Enter process id" required name="process" />
+        <input type="submit" value="assign" />
+    </form>
+    </div>
+    <script src="js/jquery.js"></script>
+    <script src="js/deadlock.js"></script>
+</body>
+</html>
