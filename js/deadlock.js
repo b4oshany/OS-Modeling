@@ -16,7 +16,9 @@ $('.bn').click(function(e){
                 Resource.id++;
             }
         }else if(bn.hasClass('request')){
-            $('#proreq').toggle().addClass('request');       
+            Canvas.draw_arrow(this, 'process','resource');
+            //$('#proreq').toggle().addClass('request');     
+            
         }else if(bn.hasClass('kill')){
             var name = prompt('Enter the name of the '+type);
             if(type == 'process'){						
@@ -36,7 +38,8 @@ $('.bn').click(function(e){
                  $('#resass').toggle().addClass('release');                
             }            
         }else if(bn.hasClass('assign')){
-            $('#resass').toggle().addClass('assign');    
+           // $('#resass').toggle().addClass('assign');    
+            Canvas.draw_arrow(this, 'resource', 'process');
         }
     }
 });
@@ -125,6 +128,27 @@ function Command(){
         console.log('Resource '+resource_id+' does not exist\nYou can create a process by using resource -c [resource_name]');
         return false;
     }
+    
+    
+    this.getItemByCords = function(x, y){
+        for(var i in processes){
+            var item = processes[i];
+            console.log('o: '+item.cords[0]+' | '+item.cords[1]+' m: '+x+' | '+y);
+            if((item.cords[0] + item.dimension[0]) > x && (item.cords[0] - item.dimension[0]) < x && (item.cords[1] + item.dimension[0]) > y && (item.cords[1] - item.dimension[0]) < y){
+                item['type'] = 'process';
+                return item;
+            }
+        }
+        for(var i in resources){
+            var item = resources[i];
+            console.log('o: '+item.cords[0]+' | '+item.cords[1]+' m: '+x+' | '+y);
+            if(item.cords[0] <= x && (item.cords[0] + item.dimension[0]) > x && item.cords[1] <= y && (item.cords[1] + item.dimension[1]) > y){
+                item['type'] = 'resource';
+                return item;
+            }
+        }
+        return false;
+    }   
     
     this.getProcess = function(process_id){
 		for(var x in processes){
@@ -283,7 +307,7 @@ function Process(process_id){
 
 function Resource(resource_id){
 	this.elem;
-	this.unit = null;
+	this.unit = 1;
 	this.rid = resource_id;
 	this.processes = [];	
 	this.cords = [400, Resource.top[0]];
@@ -386,8 +410,59 @@ function Arc(x, y, radius){
 }
 Arc.prototype = new Canvas();
 
-Canvas.draw_arrow = function (/*x1, y1, x2, y2, size*/) {
+function Line(){
+    this.size = 1;
+    this.cords;
+    this.destination;
+    this.color = 'black';
     
+    this.line_start = function(x, y){
+        this.cords = {x : x, y : y};
+        ctx.fillStyle = this.color;
+        ctx.size = this.size;
+        ctx.moveTo(x, y);
+    }
+    
+    this.line_end = function(x, y){
+        this.destination = {x : x, y : y};
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+}
+Line.prototype = new Canvas();
+
+Canvas.draw_arrow = function (obj, from, to) {
+    var mouse = {x : 0, y : 0};
+    var last_mouse = {x : 0, y : 0};
+    var arrow = new Line();
+    ctx.canvas.addEventListener('mousedown', function(e){
+        last_mouse.x = mouse.x; 
+        last_mouse.y = mouse.y;      
+        console.log(mouse.x);
+        var item = commands.getItemByCords(last_mouse.x, last_mouse.y);
+        console.log(item);
+        if(item.type == from){
+            arrow.start;
+            arrow.line_start(last_mouse.x, last_mouse.y);    
+        }            
+    });                                
+    ctx.canvas.addEventListener('mousemove', function(e){
+        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
+        mouse.y = e.clientY - ctx.canvas.offsetTop;  
+    });
+    
+    ctx.canvas.addEventListener('mouseup', function(e){
+        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
+        mouse.y = e.clientY - ctx.canvas.offsetTop; 
+        console.log(mouse.x);
+        var item = commands.getItemByCords(mouse.x, mouse.y);
+        console.log(item);
+        if(item.type == to){
+            arrow.size = 3;
+            arrow.line_end(mouse.x, mouse.y)
+            arrow.end;
+        }
+    });
     
     /*
     var angle = Math.atan2(x1-x2,y2-y1);
