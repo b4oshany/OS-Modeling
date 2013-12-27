@@ -49,7 +49,6 @@
 #canvas {
     position: relative;
     top: 100px;
-    height: 580px;
 }
 
 #canvas .resource{

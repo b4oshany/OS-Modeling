@@ -1,5 +1,6 @@
 var commands = new Command();
 var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
 $('.bn').click(function(e){
     var bn =  $(this);
     var type = (bn.hasClass('bn_process'))? 'process': (bn.hasClass('bn_resource'))? 'resource': false;
@@ -273,7 +274,12 @@ function Process(process_id){
 	}       
 	
 	this.draw = function(){
-		var pr = document.createElement('div');
+        ctx.fillStyle = 'blue';
+        ctx.arc(Process.cords[0][0], Process.cords[0][1], 50, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fill();
+		/*
+        var pr = document.createElement('div');
 		pr.setAttribute('id', this.pid);
 		pr.setAttribute('class', 'process');
 		pr.innerHTML = 'Process<br>'+this.pid;
@@ -284,7 +290,9 @@ function Process(process_id){
 		Process.cords.splice(0,1);
 		canvas.appendChild(pr);
 		this.div = pr;
-		console.log('create process diagram');
+		*/
+        console.log('create process diagram');
+        
 	}
 	this.draw();	
 }
@@ -325,7 +333,7 @@ function Resource(resource_id){
 }
 
 Resource.top = [50, 140, 230, 320, 410];
-Process.cords = [[15, 10], [15, 100], [15,190], [15,280], [15,370], [70, 10], [70, 100], [70,190], [70,280], [70,370]];
+Process.cords = [[150, 60], [150, 140], [150,220], [150, 380], [150,380], [700, 60], [700, 140], [700,220], [700,300], [700,380]];
 
 
 function Animation(){    
