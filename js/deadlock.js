@@ -8,8 +8,13 @@ $('.bn').click(function(e){
     $('#resass').hide();
     if(type != false){
         if(bn.hasClass('create')){
-            var name = prompt('Enter the name of the '+type);
-            commands.create(type,name);
+            if(type == 'process' && Process.cords.length != 0){
+                commands.create(type, 'P_'+Process.id);
+                Process.id++;    
+            }else if(type == 'resource' && Resource.top.length != 0){
+                commands.create(type, 'R_'+Resource.id);
+                Resource.id++;
+            }
         }else if(bn.hasClass('request')){
             $('#proreq').toggle().addClass('request');       
         }else if(bn.hasClass('kill')){
@@ -274,23 +279,17 @@ function Process(process_id){
 	}       
 	
 	this.draw = function(){
+        ctx.beginPath();
         ctx.fillStyle = 'blue';
-        ctx.arc(Process.cords[0][0], Process.cords[0][1], 50, 0, Math.PI * 2);
+        ctx.arc(Process.cords[0][0], Process.cords[0][1], 30, 0, 2*Math.PI);
         ctx.stroke();
         ctx.fill();
-		/*
-        var pr = document.createElement('div');
-		pr.setAttribute('id', this.pid);
-		pr.setAttribute('class', 'process');
-		pr.innerHTML = 'Process<br>'+this.pid;
-		this.cords[0] = Process.cords[0][0];
-		this.cords[1] = Process.cords[0][1];
-		pr.style.top = this.cords[1]+'px';
-		pr.style.left = this.cords[0]+'%';		
+        ctx.fillStyle = 'white';
+        ctx.font="18px Arial";  
+        ctx.textAlign = 'center';
+        ctx.fillText(this.pid, Process.cords[0][0], Process.cords[0][1] + 7);	
+        ctx.closePath();
 		Process.cords.splice(0,1);
-		canvas.appendChild(pr);
-		this.div = pr;
-		*/
         console.log('create process diagram');
         
 	}
@@ -316,24 +315,26 @@ function Resource(resource_id){
 	}
 	
 	this.draw = function(){
-		var re = document.createElement('div');
-		re.setAttribute('id', this.rid);
-		re.setAttribute('class', 'resource');
-		re.innerHTML = 'Reource<br>'+this.rid;
-		this.cords[0] = 45;
-		this.cords[1] = Resource.top[0];
-		re.style.left = this.cords[0]+'%';
-		re.style.top = this.cords[1]+'px';
+        ctx.beginPath();
+        ctx.fillStyle = 'red';
+        ctx.fillRect(400, Resource.top[0], 80, 80);
+        ctx.stroke();
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font="18px Arial";  
+        ctx.textAlign = 'center';
+        ctx.fillText(this.rid, 440, Resource.top[0] + 50);	
+        ctx.closePath();
 		Resource.top.splice(0,1);
-		canvas.appendChild(re);
-		this.div = re;
-		console.log('create resource diagram for '+this.rid);
+        console.log('create resource diagram');
 	}
 	this.draw();	
 }
 
-Resource.top = [50, 140, 230, 320, 410];
-Process.cords = [[150, 60], [150, 140], [150,220], [150, 380], [150,380], [700, 60], [700, 140], [700,220], [700,300], [700,380]];
+Resource.id = 1;
+Resource.top = [0, 90, 180, 270, 360, 450];
+Process.id = 1;
+Process.cords = [[150, 100], [150, 180], [150,260], [150, 340], [150,420], [700, 100], [700, 180], [700,260], [700,340], [700,420]];
 
 
 function Animation(){    
