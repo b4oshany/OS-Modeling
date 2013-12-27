@@ -245,7 +245,7 @@ function Command(){
 }
 
 function Process(process_id){
-	this.elem = false;
+	this.elem;
     this.pid = process_id;
     this.running = false;
     this.resources = [];
@@ -269,10 +269,10 @@ function Process(process_id){
 	}       
 	
 	this.draw = function(){
-        this.elem = new Arc(this.cords[0], this.cords[1], 30);
+        this.elem = new Arc(this.cords[0], this.cords[1], this.dimension[0]);
         this.elem.start;
         this.elem.draw_circle('blue');
-        this.elem.add_text(this.rid, 18, 'white');
+        this.elem.add_text(this.pid, 18, 'white');
         this.elem.end;
 		Process.cords.splice(0,1);
         console.log('create process diagram');
@@ -351,9 +351,7 @@ function Rectangle(x, y, width, height){
             ctx.fillRect(x, y, width, height);
         }else{
             ctx.strokeRect(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
-        }        
-        ctx.stroke();
-        ctx.fill();            
+        }         
     }
 }
 Rectangle.prototype = new Canvas();
@@ -361,23 +359,25 @@ Rectangle.prototype = new Canvas();
 function Arc(x, y, radius){
     this.radius = radius;
     this.cords = [x, y];
-    this.start = 0;
-    this.stop = 2*Math.PI;
+    var begin = 0;
+    var stop = 2*Math.PI;
     this.clockwise = false;
-    this.offset = [0,7];
+    this.offset = [0,0];
     
-    this.draw_circle = function(color){
+    this.draw_circle = function(color){        
+        ctx.beginPath();
         ctx.fillStyle = color;
-        ctx.arc(this.cords[0], this.cords[1], this.radius, this.start, this.stop, this.clockwise);
+        ctx.arc(this.cords[0], this.cords[1], this.radius, begin, stop);
         ctx.stroke();
         if(this.fill){
             ctx.fill();
         }
+        ctx.closePath();
     }     
     
-    this.draw_arc = function(color, fill){
+    this.draw_arc = function(stat, end, color){
         ctx.fillStyle = color;
-        ctx.arc(this.x, this.y, this.radius, this.start, this.end, this.clockwise);
+        ctx.arc(this.x, this.y, this.radius, start, end, this.clockwise);
         ctx.stroke();
         if(this.fill){
             ctx.fill();
@@ -386,7 +386,10 @@ function Arc(x, y, radius){
 }
 Arc.prototype = new Canvas();
 
-Canvas.arrow = function (x1, y1, x2, y2, size) {
+Canvas.draw_arrow = function (/*x1, y1, x2, y2, size*/) {
+    
+    
+    /*
     var angle = Math.atan2(x1-x2,y2-y1);
     //angle = (angle / (2 * Math.PI)) * 360;
     ctx.beginPath();
@@ -400,4 +403,5 @@ Canvas.arrow = function (x1, y1, x2, y2, size) {
     ctx.lineTo(x2+size, y2);
     ctx.fill();
     ctx.closePath();    
+    */
 }
