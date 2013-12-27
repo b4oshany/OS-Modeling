@@ -9,10 +9,10 @@ $('.bn').click(function(e){
     if(type != false){
         if(bn.hasClass('create')){
             if(type == 'process' && Process.cords.length != 0){
-                commands.create(type, 'P_'+Process.id);
+                commands.create(type, 'P'+Process.id);
                 Process.id++;    
             }else if(type == 'resource' && Resource.top.length != 0){
-                commands.create(type, 'R_'+Resource.id);
+                commands.create(type, 'R'+Resource.id);
                 Resource.id++;
             }
         }else if(bn.hasClass('request')){
@@ -160,32 +160,21 @@ function Command(){
 		var process = this.getProcess(process_id);
         console.log(arrows);
         if(resource != false && process != false){
-            var rtop = resource.div.offsetTop;   
-            var rleft = resource.div.offsetLeft;
-            var rheight = resource.div.offsetHeight;
-            var rwidth = resource.div.offsetWidth;
-            var ptop = process.div.offsetTop;   
-            var pleft = process.div.offsetLeft;
-            var pheight = process.div.offsetHeight;
-            var pwidth = process.div.offsetWidth;
-            var arrow = document.createElement('div');
-            arrow.setAttribute('id', process_id+'->'+resource_id);
-			arrow.setAttribute('class', 'arrow');
-            arrow.style.top = (ptop)+'px';
-			arrow.style.left = (pleft+pwidth)+'px'
-			arrow.style.width = (rleft-(pleft+pwidth))+'px';
-			arrow.style.backgroundColor = 'blue';
-            var effect = new Animation();
-            var x = rleft - (pleft + pwidth);
-            var y = rtop - ptop;
-            var thea = Math.atan2(y,x)*(180/Math.PI);  
-            effect.rotate(arrow, thea);
-            console.log(this.arrowExists(process_id+'->'+resource_id));
-            if(this.arrowExists(process_id+'->'+resource_id) == false){
-                canvas.appendChild(arrow);
-                arrow.style.top = (ptop + (pheight/2))+'px';
-                arrows.push(arrow);
-            }
+            var r_cords = resource.cords;   
+            var r_dimension = resource.dimension; 
+            var p_cords = process.cords;   
+            var p_dimension = process.dimension;
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            //ctx.moveTo((p_cords[0] + p_dimension[0]), (p_cords[1] + (p_dimension[1] * 0.5)));
+            //ctx.lineTo((r_cords[0] + r_dimension[0]*0.5), (r_cords[1] + (r_dimension[1] * 0.5)));
+            Animation.arrow((p_cords[0] + p_dimension[0]), (p_cords[1] + (p_dimension[1] * 0.5)), (r_cords[0] + r_dimension[0]*0.5), (r_cords[1] + (r_dimension[1] * 0.5)), 10);
+            ctx.stroke();
+            
+            //console.log(this.arrowExists(process_id+'->'+resource_id));
+            //if(this.arrowExists(process_id+'->'+resource_id) == false){
+                arrows.push(process_id+'->'+resource_id);
+            //}
         }
     }
     
@@ -260,7 +249,8 @@ function Process(process_id){
     this.pid = process_id;
     this.running = false;
     this.resources = [];
-	this.cords = [];
+	this.cords = [Process.cords[0][0], Process.cords[0][1]];
+    this.dimension = [30, 0];
 	console.log('Process '+this.pid+' was created');
     this.addResource = function(resource_id){
         this.resources.push(resource_id);
@@ -281,13 +271,13 @@ function Process(process_id){
 	this.draw = function(){
         ctx.beginPath();
         ctx.fillStyle = 'blue';
-        ctx.arc(Process.cords[0][0], Process.cords[0][1], 30, 0, 2*Math.PI);
+        ctx.arc(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1], 2*Math.PI);
         ctx.stroke();
         ctx.fill();
         ctx.fillStyle = 'white';
         ctx.font="18px Arial";  
         ctx.textAlign = 'center';
-        ctx.fillText(this.pid, Process.cords[0][0], Process.cords[0][1] + 7);	
+        ctx.fillText(this.pid, this.cords[0], this.cords[1] + 7);	
         ctx.closePath();
 		Process.cords.splice(0,1);
         console.log('create process diagram');
@@ -301,7 +291,8 @@ function Resource(resource_id){
 	this.unit = null;
 	this.rid = resource_id;
 	this.processes = [];	
-	this.cords = [];
+	this.cords = [400, Resource.top[0]];
+    this.dimension = [80, 80];
 	console.log('Resource '+this.rid+' was created');
 	this.addProcess = function(process_id){
 		this.processes.push(process_id);
@@ -317,13 +308,13 @@ function Resource(resource_id){
 	this.draw = function(){
         ctx.beginPath();
         ctx.fillStyle = 'red';
-        ctx.fillRect(400, Resource.top[0], 80, 80);
+        ctx.fillRect(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
         ctx.stroke();
         ctx.fill();
         ctx.fillStyle = 'white';
         ctx.font="18px Arial";  
         ctx.textAlign = 'center';
-        ctx.fillText(this.rid, 440, Resource.top[0] + 50);	
+        ctx.fillText(this.rid, this.cords[0]+40, this.cords[1] + 50);	
         ctx.closePath();
 		Resource.top.splice(0,1);
         console.log('create resource diagram');
@@ -340,6 +331,9 @@ Process.cords = [[150, 100], [150, 180], [150,260], [150, 340], [150,420], [700,
 function Animation(){    
     var looper;
     this.degrees = 0;
+    this.text = '';
+    this.dimension;
+    this.cords;
     this.rotate = function(elem, degrees){
         this.degrees = degrees;
         if(navigator.userAgent.match("Chrome")){
@@ -363,4 +357,21 @@ function Animation(){
             degrees = 1;
         }
     }
+    
+}
+
+Animation.arrow = function (x1, y1, x2, y2, size) {
+    var angle = Math.atan2(x1-x2,y2-y1);
+    //angle = (angle / (2 * Math.PI)) * 360;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.closePath();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2 - size*0.5);
+    ctx.lineTo(x2, y2 + size*0.5);
+    ctx.lineTo(x2+size, y2);
+    ctx.fill();
+    ctx.closePath();    
 }
