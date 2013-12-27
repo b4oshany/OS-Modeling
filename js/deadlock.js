@@ -168,7 +168,7 @@ function Command(){
             ctx.lineWidth = 3;
             //ctx.moveTo((p_cords[0] + p_dimension[0]), (p_cords[1] + (p_dimension[1] * 0.5)));
             //ctx.lineTo((r_cords[0] + r_dimension[0]*0.5), (r_cords[1] + (r_dimension[1] * 0.5)));
-            Animation.arrow((p_cords[0] + p_dimension[0]), (p_cords[1] + (p_dimension[1] * 0.5)), (r_cords[0] + r_dimension[0]*0.5), (r_cords[1] + (r_dimension[1] * 0.5)), 10);
+            Canvas.arrow((p_cords[0] + p_dimension[0]), (p_cords[1] + (p_dimension[1] * 0.5)), (r_cords[0] + r_dimension[0]*0.5), (r_cords[1] + (r_dimension[1] * 0.5)), 10);
             ctx.stroke();
             
             //console.log(this.arrowExists(process_id+'->'+resource_id));
@@ -245,7 +245,7 @@ function Command(){
 }
 
 function Process(process_id){
-	this.div = false;
+	this.elem = false;
     this.pid = process_id;
     this.running = false;
     this.resources = [];
@@ -269,16 +269,11 @@ function Process(process_id){
 	}       
 	
 	this.draw = function(){
-        ctx.beginPath();
-        ctx.fillStyle = 'blue';
-        ctx.arc(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1], 2*Math.PI);
-        ctx.stroke();
-        ctx.fill();
-        ctx.fillStyle = 'white';
-        ctx.font="18px Arial";  
-        ctx.textAlign = 'center';
-        ctx.fillText(this.pid, this.cords[0], this.cords[1] + 7);	
-        ctx.closePath();
+        this.elem = new Arc(this.cords[0], this.cords[1], 30);
+        this.elem.start;
+        this.elem.draw_circle('blue');
+        this.elem.add_text(this.rid, 18, 'white');
+        this.elem.end;
 		Process.cords.splice(0,1);
         console.log('create process diagram');
         
@@ -287,7 +282,7 @@ function Process(process_id){
 }
 
 function Resource(resource_id){
-	this.div = false;
+	this.elem;
 	this.unit = null;
 	this.rid = resource_id;
 	this.processes = [];	
@@ -306,16 +301,11 @@ function Resource(resource_id){
 	}
 	
 	this.draw = function(){
-        ctx.beginPath();
-        ctx.fillStyle = 'red';
-        ctx.fillRect(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
-        ctx.stroke();
-        ctx.fill();
-        ctx.fillStyle = 'white';
-        ctx.font="18px Arial";  
-        ctx.textAlign = 'center';
-        ctx.fillText(this.rid, this.cords[0]+40, this.cords[1] + 50);	
-        ctx.closePath();
+        this.elem = new Rectangle(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
+        this.elem.start;
+        this.elem.draw_rect('red');
+        this.elem.add_text(this.rid, 18, 'white');
+        this.elem.end;
 		Resource.top.splice(0,1);
         console.log('create resource diagram');
 	}
@@ -328,39 +318,75 @@ Process.id = 1;
 Process.cords = [[150, 100], [150, 180], [150,260], [150, 340], [150,420], [700, 100], [700, 180], [700,260], [700,340], [700,420]];
 
 
-function Animation(){    
+function Canvas(){    
     var looper;
     this.degrees = 0;
-    this.text = '';
-    this.dimension;
-    this.cords;
-    this.rotate = function(elem, degrees){
-        this.degrees = degrees;
-        if(navigator.userAgent.match("Chrome")){
-            elem.style.WebkitTransform = "rotate("+this.degrees+"deg)";
-        } else if(navigator.userAgent.match("Firefox")){
-            elem.style.MozTransform = "rotate("+this.degrees+"deg)";
-        } else if(navigator.userAgent.match("MSIE")){
-            elem.style.msTransform = "rotate("+this.degrees+"deg)";
-        } else if(navigator.userAgent.match("Opera")){
-            elem.style.OTransform = "rotate("+this.degrees+"deg)";
-        } else {
-            elem.style.transform = "rotate("+this.degrees+"deg)";
-        }
-    }   
+    this.text;
+    this.dimension = [];
+    this.cords = [];
+    this.offset = [0,0];
+    this.fill = true;
+
+    this.start = ctx.beginPath();
+    this.end = ctx.closePath();
     
-    this.rotateAnimation = function(elem,speed){
-        this.rotate(elem, this.degrees);
-        looper = setTimeout('rotateAnimation(\''+elem+'\','+speed+')',speed);
-        degrees++;
-        if(degrees > 359){
-            degrees = 1;
-        }
-    }
-    
+    this.add_text = function(text, size, color){
+        ctx.fillStyle = color;
+        ctx.font= size+"px Arial";  
+        ctx.textAlign = 'center';
+        ctx.fillText(text, this.cords[0] + this.offset[0], this.cords[1] + this.offset[1]);
+    } 
 }
 
-Animation.arrow = function (x1, y1, x2, y2, size) {
+function Rectangle(x, y, width, height){
+    this.cords = [x, y];
+    this.dimension = [width, height];
+    this.offset = [40, 50];
+    
+    this.draw_rect = function(color){
+        this.cords = [x, y];
+        this.dimension = [width, height];
+        if(this.fill){
+            ctx.fillStyle = color;
+            ctx.fillRect(x, y, width, height);
+        }else{
+            ctx.strokeRect(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
+        }        
+        ctx.stroke();
+        ctx.fill();            
+    }
+}
+Rectangle.prototype = new Canvas();
+
+function Arc(x, y, radius){
+    this.radius = radius;
+    this.cords = [x, y];
+    this.start = 0;
+    this.stop = 2*Math.PI;
+    this.clockwise = false;
+    this.offset = [0,7];
+    
+    this.draw_circle = function(color){
+        ctx.fillStyle = color;
+        ctx.arc(this.cords[0], this.cords[1], this.radius, this.start, this.stop, this.clockwise);
+        ctx.stroke();
+        if(this.fill){
+            ctx.fill();
+        }
+    }     
+    
+    this.draw_arc = function(color, fill){
+        ctx.fillStyle = color;
+        ctx.arc(this.x, this.y, this.radius, this.start, this.end, this.clockwise);
+        ctx.stroke();
+        if(this.fill){
+            ctx.fill();
+        }
+    }   
+}
+Arc.prototype = new Canvas();
+
+Canvas.arrow = function (x1, y1, x2, y2, size) {
     var angle = Math.atan2(x1-x2,y2-y1);
     //angle = (angle / (2 * Math.PI)) * 360;
     ctx.beginPath();
