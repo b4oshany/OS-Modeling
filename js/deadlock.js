@@ -9,15 +9,14 @@ $('.bn').click(function(e){
     if(type != false){
         if(bn.hasClass('create')){
             if(type == 'process' && Process.cords.length != 0){
-                commands.create(type, 'P'+Process.id);
-                Process.id++;    
+                commands.create(type, 'P'+Process.number);
+                Process.number++;    
             }else if(type == 'resource' && Resource.top.length != 0){
-                commands.create(type, 'R'+Resource.id);
-                Resource.id++;
+                commands.create(type, 'R'+Resource.number);
+                Resource.number++;
             }
         }else if(bn.hasClass('request')){
-            Canvas.draw_arrow(this, 'process','resource');
-            //$('#proreq').toggle().addClass('request');     
+            Canvas.draw_arrow(commands, 'process','resource');
             
         }else if(bn.hasClass('kill')){
             var name = prompt('Enter the name of the '+type);
@@ -37,9 +36,8 @@ $('.bn').click(function(e){
             }else{
                  $('#resass').toggle().addClass('release');                
             }            
-        }else if(bn.hasClass('assign')){
-           // $('#resass').toggle().addClass('assign');    
-            Canvas.draw_arrow(this, 'resource', 'process');
+        }else if(bn.hasClass('assign')){  
+            Canvas.draw_arrow(commands, 'resource', 'process');
         }
     }
 });
@@ -101,7 +99,7 @@ function Command(){
     
      this.resourceExists = function(resource_id){
         for(var x in resources){
-            if(resources[x].rid === resource_id){
+            if(resources[x].id === resource_id){
                 return true;   
             }
         }
@@ -111,7 +109,7 @@ function Command(){
     
     this.processExists = function(process_id){
 		for(var x in processes){
-            if(processes[x].pid === process_id){
+            if(processes[x].id === process_id){
                 return true;   
             }
         }
@@ -121,7 +119,7 @@ function Command(){
     
     this.getResource = function(resource_id){
         for(var x in resources){
-            if(resources[x].rid === resource_id){
+            if(resources[x].id === resource_id){
                 return resources[x];   
             }
         }
@@ -135,16 +133,14 @@ function Command(){
             var item = processes[i];
             console.log('o: '+item.cords[0]+' | '+item.cords[1]+' m: '+x+' | '+y);
             if((item.cords[0] + item.dimension[0]) > x && (item.cords[0] - item.dimension[0]) < x && (item.cords[1] + item.dimension[0]) > y && (item.cords[1] - item.dimension[0]) < y){
-                item['type'] = 'process';
-                return item;
+                return {type : 'process', id : item.id};
             }
         }
         for(var i in resources){
             var item = resources[i];
             console.log('o: '+item.cords[0]+' | '+item.cords[1]+' m: '+x+' | '+y);
             if(item.cords[0] <= x && (item.cords[0] + item.dimension[0]) > x && item.cords[1] <= y && (item.cords[1] + item.dimension[1]) > y){
-                item['type'] = 'resource';
-                return item;
+                return {type : 'resource', id : item.id};
             }
         }
         return false;
@@ -152,7 +148,7 @@ function Command(){
     
     this.getProcess = function(process_id){
 		for(var x in processes){
-            if(processes[x].pid === process_id){
+            if(processes[x].id === process_id){
                 return processes[x];   
             }
         }
@@ -179,9 +175,9 @@ function Command(){
         }
 	}
     
-    this.mapProcessToResource = function(process_id, resource_id){        
-		var resource = this.getResource(resource_id);
-		var process = this.getProcess(process_id);
+    this.mapProcessToResource = function(process, resource){   
+        resource.addProcess(process.id);
+        process.addResource(resource.id);
         console.log(arrows);
         if(resource != false && process != false){
             var r_cords = resource.cords;   
@@ -204,7 +200,7 @@ function Command(){
     
     this.kill_process = function(process_id){
 		for(var x = 0; x < processes.length; x++){
-			if(processes[x].pid === process_id){
+			if(processes[x].id === process_id){
                 canvas.removeChild(processes[x].div);
 				processes.splice(x,1);	
 				this.remove_process(process_id);
@@ -257,7 +253,7 @@ function Command(){
 	
 	this.kill_resource = function(resource_id){
 		for(var x = 0; x < resources.length; x++){
-			if(resources[x].rid === resource_id){
+			if(resources[x].id === resource_id){
                 canvas.removeChild(resources[x].div);
 				resources.splice(x,1);	
 				this.remove_resource(resource_id);
@@ -270,33 +266,33 @@ function Command(){
 
 function Process(process_id){
 	this.elem;
-    this.pid = process_id;
+    this.id = process_id;
     this.running = false;
     this.resources = [];
 	this.cords = [Process.cords[0][0], Process.cords[0][1]];
     this.dimension = [30, 0];
-	console.log('Process '+this.pid+' was created');
+	console.log('Process '+this.id+' was created');
     this.addResource = function(resource_id){
         this.resources.push(resource_id);
-		console.log('Process '+this.pid+' has requested resource '+resource_id);
+		console.log('Process '+this.id+' has requested resource '+resource_id);
     }
 	
 	this.removeResource = function(resource_id){
 		var index = resources.indexOf(resource_id);
 		this.resources.splice(index, 1);
-		console.log('Resource '+resource_id+' was removed from process '+this.pid);
+		console.log('Resource '+resource_id+' was removed from process '+this.id);
 	}
 	
 	this.removeLastResource = function(){
 		var rid = this.resource.pop();
-		console.log('Resource '+rid+' was removed from process '+this.pid);
+		console.log('Resource '+rid+' was removed from process '+this.id);
 	}       
 	
 	this.draw = function(){
         this.elem = new Arc(this.cords[0], this.cords[1], this.dimension[0]);
         this.elem.start;
         this.elem.draw_circle('blue');
-        this.elem.add_text(this.pid, 18, 'white');
+        this.elem.add_text(this.id, 18, 'white');
         this.elem.end;
 		Process.cords.splice(0,1);
         console.log('create process diagram');
@@ -308,11 +304,11 @@ function Process(process_id){
 function Resource(resource_id){
 	this.elem;
 	this.unit = 1;
-	this.rid = resource_id;
+	this.id = resource_id;
 	this.processes = [];	
 	this.cords = [400, Resource.top[0]];
     this.dimension = [80, 80];
-	console.log('Resource '+this.rid+' was created');
+	console.log('Resource '+this.id+' was created');
 	this.addProcess = function(process_id){
 		this.processes.push(process_id);
 	}
@@ -328,7 +324,7 @@ function Resource(resource_id){
         this.elem = new Rectangle(this.cords[0], this.cords[1], this.dimension[0], this.dimension[1]);
         this.elem.start;
         this.elem.draw_rect('red');
-        this.elem.add_text(this.rid, 18, 'white');
+        this.elem.add_text(this.id, 18, 'white');
         this.elem.end;
 		Resource.top.splice(0,1);
         console.log('create resource diagram');
@@ -336,9 +332,9 @@ function Resource(resource_id){
 	this.draw();	
 }
 
-Resource.id = 1;
+Resource.number = 1;
 Resource.top = [0, 90, 180, 270, 360, 450];
-Process.id = 1;
+Process.number = 1;
 Process.cords = [[150, 100], [150, 180], [150,260], [150, 340], [150,420], [700, 100], [700, 180], [700,260], [700,340], [700,420]];
 
 
@@ -431,40 +427,7 @@ function Line(){
 }
 Line.prototype = new Canvas();
 
-Canvas.draw_arrow = function (obj, from, to) {
-    var mouse = {x : 0, y : 0};
-    var last_mouse = {x : 0, y : 0};
-    var arrow = new Line();
-    ctx.canvas.addEventListener('mousedown', function(e){
-        last_mouse.x = mouse.x; 
-        last_mouse.y = mouse.y;      
-        console.log(mouse.x);
-        var item = commands.getItemByCords(last_mouse.x, last_mouse.y);
-        console.log(item);
-        if(item.type == from){
-            arrow.start;
-            arrow.line_start(last_mouse.x, last_mouse.y);    
-        }            
-    });                                
-    ctx.canvas.addEventListener('mousemove', function(e){
-        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
-        mouse.y = e.clientY - ctx.canvas.offsetTop;  
-    });
-    
-    ctx.canvas.addEventListener('mouseup', function(e){
-        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
-        mouse.y = e.clientY - ctx.canvas.offsetTop; 
-        console.log(mouse.x);
-        var item = commands.getItemByCords(mouse.x, mouse.y);
-        console.log(item);
-        if(item.type == to){
-            arrow.size = 3;
-            arrow.line_end(mouse.x, mouse.y)
-            arrow.end;
-        }
-    });
-    
-    /*
+Canvas.arrow = function (x1, y1, x2, y2, size) {
     var angle = Math.atan2(x1-x2,y2-y1);
     //angle = (angle / (2 * Math.PI)) * 360;
     ctx.beginPath();
@@ -478,5 +441,38 @@ Canvas.draw_arrow = function (obj, from, to) {
     ctx.lineTo(x2+size, y2);
     ctx.fill();
     ctx.closePath();    
-    */
+ }
+
+
+Canvas.draw_arrow = function (obj, from, to) {
+    var mouse = {x : 0, y : 0};
+    var last_mouse = {x : 0, y : 0};
+    var arrow = new Line();
+    var source, destination;
+    var enable = false;
+    ctx.canvas.addEventListener('mousedown', function(e){
+        last_mouse.x = mouse.x; 
+        last_mouse.y = mouse.y;      
+        console.log(mouse.x);
+        source = commands.getItemByCords(last_mouse.x, last_mouse.y);
+        console.log(source);
+        if(source.type == from){
+            enable = true;
+        }            
+    });                                
+    ctx.canvas.addEventListener('mousemove', function(e){
+        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
+        mouse.y = e.clientY - ctx.canvas.offsetTop;  
+    });
+    
+    ctx.canvas.addEventListener('mouseup', function(e){
+        mouse.x = e.clientX - ctx.canvas.offsetLeft; 
+        mouse.y = e.clientY - ctx.canvas.offsetTop; 
+        console.log(mouse.x);
+        destination = commands.getItemByCords(mouse.x, mouse.y);
+        console.log(destination);
+        if(destination.type == to && enable){
+            commands.mapProcessToResource(source.id, destination.id);
+        }
+    });
 }
