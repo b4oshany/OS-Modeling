@@ -38,7 +38,13 @@ $('.bn').click(function(e){
             }            
         }else if(bn.hasClass('assign')){  
             Canvas.mouseMoveEvent(commands, 'resource', 'process');
-        }
+        }else if(bn.hasClass('bn_cpu')){
+           if(bn.hasClass('check')){
+                commands.discover('self', 0, 0);
+            }else if(bn.hasClass('play')){
+                
+            }
+         }
     }
 });
 
@@ -78,6 +84,7 @@ function Command(){
 	var processes = [];
 	var resources = [];	
     var arrows = [];
+	var seq = [];
     
     this.create = function(type, name){
         if(type === 'process'){
@@ -152,6 +159,33 @@ function Command(){
         console.log('Process '+process_id+' does not exist\nYou can create a process by using process -c [process_name]');
         return false;
     }
+	
+	this.discover = function(obj, innerPos, outerPos){
+		if(obj == 'self'){
+			if(processes.length == outerPos){
+				return;	
+			}else{
+				obj = processes[outerPos];	
+			}
+		}
+		if(obj.constructor == Process){
+			seq.push(obj);
+			if(innerPos == obj.resources.length){
+				return;
+			}else{
+				this.discover(obj.resources[outerPos], innerPos + 1, outerPos);
+			}
+		}
+		
+		if(obj.constructor == Resource){
+			seq.push(obj);
+			if(innerPos == obj.processes.length){
+				return;
+			}else{
+				this.discover(obj.processes[outerPos], innerPos, outerPos);
+			}
+		}				
+	}
     
     this.map = function(from, to){
         if(from.type == 'process'){
@@ -169,10 +203,9 @@ function Command(){
             var r_dimensions = resource.dimensions; 
             var p_cords = process.cords;   
             var p_dimensions = process.dimensions;
-        console.log('resource.processExists(process.id).bool');
             ctx.beginPath();
             ctx.lineWidth = 3; 
-            if(from.type == 'process' && !process.resourceExists(resource.id).bool){
+            if(from.type == 'process' && !process.hasResource(resource.id).bool){
                 if(r_cords.x > p_cords.x){
                     arrow = new Arrow((p_cords.x + p_dimensions.width), (p_cords.y + (p_dimensions.height * 0.5)), r_cords.x, (r_cords.y + (r_dimensions.height * resource.toSpot.left)), 5);
                     resource.toSpot.left += (resource.toSpot.left == 0.9)? (-0.75): 0.15;
@@ -181,7 +214,7 @@ function Command(){
                     resource.toSpot.right += (resource.toSpot.right == 0.9)? (-0.75)  : 0.15;
                 }
                 arrow.draw();
-                process.addResource(resource.id, arrow);  
+                process.requestResource(resource.id, arrow);  
             }else if(!resource.reachLimit() && from.type == 'resource'){   
                 if(r_cords.x < p_cords.x){
                     arrow = new Arrow((r_cords.x + r_dimensions.width * 0.75), (r_cords.y + (r_dimensions.height * resource.fromSpot.right)), (p_cords.x), (p_cords.y + (p_dimensions.height * 0.6)), 5);
@@ -192,6 +225,7 @@ function Command(){
                 }
                 arrow.draw();
                 resource.addProcess(process.id, arrow);  
+				process.useResource(resource_id);
             }
         }
     }
@@ -239,6 +273,7 @@ function Command(){
 	this.remove_resource = function(resource_id){
 		for(var x in processes){
             processes[x].removeResource(resource_id);
+            processes[x].stopRequesting(resource_id);
 		}       
 	}
 	
@@ -282,41 +317,57 @@ function Command(){
 function Process(process_id){
 	this.elem;
     this.id = process_id;
-    this.running = false;
-    this.resources = [];
+	this.state = 'IA';
+    this.resources = {has : [], requesting : []};
 	this.cords = {x : Process.cords[0][0], y : Process.cords[0][1]};
     this.dimensions = {width: 30, height: 0};
     
 	console.log('Process '+this.id+' was created');
     
-    this.addResource = function(resource_id, pointer){
-        if(!this.resourceExists(resource_id).bool){
-            this.resources.push({id: resource_id, pointer: pointer});
+    this.requestResource = function(resource_id, pointer){
+        if(!this.isRequesting(resource_id).bool){
+            this.resources.requesting.push({id: resource_id, pointer: pointer});
             console.log('Process '+this.id+' has requested resource '+resource_id);
         }
     }
 	
+	this.useResource = function(resource_id){
+		this.resources.has.push(resource_id);
+	}
+	
 	this.removeResource = function(resource_id){        
-        var exists = this.resourceExists(resource_id);
-        if(exists.bool){      
-            this.resources.splice(exists.position, 1);
+        var hexists = this.hasResource(resource_id);   
+        if(hexists.bool){      
+            this.resources.has.splice(hexists.position, 1);
             console.log('Resource '+resource_id+' was removed from process '+this.id);
-        }
+        }	
+	}
+	
+	this.stopRequesting = function(resource_id){
+        var rexists = this.isRequesting(resource_id);		
+        if(rexists.bool){      
+            this.resources.requesting.splice(rexists.position, 1);
+            console.log('Resource '+resource_id+' was removed from process '+this.id);
+        }	
 	}
     
-    this.resourceExists = function(resource_id){
-        for(x in this.resources){
-            if(this.resources[x].id == resource_id){
+	this.hasResource = function(resource_id){
+        for(x in this.resources.has){
+            if(this.resources.has[x].id == resource_id){
+                return {bool: true, position : x};
+            }
+        }
+        return {bool : false};		
+	}
+	
+    this.isRequesting = function(resource_id){
+        for(x in this.resources.requesting){
+            if(this.resources.requesting[x].id == resource_id){
                 return {bool: true, position : x};
             }
         }
         return {bool : false};
-    }
-	
-	this.removeLastResource = function(){
-		var rid = this.resources.pop();
-		console.log('Resource '+rid+' was removed from process '+this.id);
-	}       
+    } 
     
     this.die = function(){
         this.elem.clear_circle();

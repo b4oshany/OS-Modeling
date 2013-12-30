@@ -15,6 +15,12 @@
     top: 15px;
 }
 
+#cpu_act{
+	left: 48%;
+	top: 15px;
+	text-align: center;
+}
+
 #resource_act{    
     right: 40px;
     top: 15px;
