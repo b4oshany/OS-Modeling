@@ -1,4 +1,4 @@
-var commands = new Command();
+var commands = new OS();
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
 $('.bn').click(function(e){
@@ -17,16 +17,18 @@ $('.bn').click(function(e){
             }
         }else if(bn.hasClass('request')){
             Canvas.mouseMoveEvent(commands, 'process','resource');
-            
+			$(this).attr('disabled', 'disabled');            
         }else if(bn.hasClass('kill')){
-            var name = prompt('Enter the name of the '+type);
-            if(type == 'process'){						
-                if(commands.processExists(name)){
-                    commands.kill_process(name);
+            var id = prompt('Enter the name of the '+type);
+            if(type == 'process'){	
+				var exists = commands.processExists(id);					
+                if(exists.bool){
+                    commands.kill_process(id, exists.location);
                 }
             }else{
-                if(commands.resourceExists(name)){
-                    commands.kill_resource(name);
+				var exists = commands.resourceExists(id);
+                if(exists.bool){
+                    commands.kill_resource(id, exists.location);
                 }
             }
             
@@ -38,14 +40,24 @@ $('.bn').click(function(e){
             }            
         }else if(bn.hasClass('assign')){  
             Canvas.mouseMoveEvent(commands, 'resource', 'process');
-        }else if(bn.hasClass('bn_cpu')){
-           if(bn.hasClass('check')){
-                commands.discover('self', 0, 0);
-            }else if(bn.hasClass('play')){
-                
-            }
-         }
+			$(this).attr('disabled', 'disabled');
+        }
     }
+});
+
+$('#os_play').click(function(e){
+   	console.log('start');
+	commands.ready_queue();
+	commands.discover('self', 0, 0);
+});
+
+
+$('#os_save_session').click(function(e) {
+    commands.save_session();
+});
+
+$('#os_restore_session').click(function(e) {
+    commands.restore_session();
 });
 
 
@@ -53,8 +65,9 @@ $('#prodis').submit(function(e){
     var su = $(this);
     var pid = this['process'].value;
     var rid = this['resource'].value;
-    if(commands.resourceExists(rid) && commands.processExists(pid)){
-        commands.getProcess(pid).removeResource(rid);
+	var process = commands.getProcess(pid);
+    if(commands.resourceExists(rid).bool && process != false){
+        process.removeResource(rid);
         Canvas.clear();
         commands.redraw_processes();
         commands.redraw_resources();
@@ -69,7 +82,7 @@ $('#resrel').submit(function(e){
     var su = $(this);
     var pid = this['process'].value;
     var rid = this['resource'].value;
-    if(commands.resourceExists(rid) && commands.processExists(pid)){
+    if(commands.resourceExists(rid).bool && commands.processExists(pid).bool){
         commands.release_resource(rid, pid);
     }
     this['process'].value = '';
@@ -78,24 +91,103 @@ $('#resrel').submit(function(e){
     return false;
 });
 
-function Command(){
-    var cmduser = [];
+function MemoryManager(){
+	this.stack = [];
+	var str_addr = 0;
+	this.nextAvailabeLocation = function(location){
+		if(this.stack.length == 0){
+			return -1;	
+		}
+		if(this.stack.indexOf(null) == -1){
+			return -1;	
+		}
+		if(stack[location] != null && location < this.stack.length){
+			return location;	
+		}else if(location == this.stack.length){
+			return this.nextAvailabeLocation(0)
+		}
+		return this.nextAvailabeLocation(current_location + 1);
+	}
+	
+	this.addToMemory = function(obj, placement_policy){
+		switch(placement_policy){
+			case 'first':
+				this.firstFit(obj);
+				break;
+			default:
+				console.log('No vaild placement policy stated, thus the default was used');
+				this.firstFit(obj);
+				break;	
+		}
+	}
+	
+	this.firstFit = function(obj){
+		var location = this.nextAvailabeLocation(str_addr);
+		if(location != -1){
+			this.stack[location] = obj;
+		}else{
+			this.stack.push(obj);	
+		}		
+	}
+}
+
+function OS(){
 	var cmdp = 0;
-	var processes = [];
-	var resources = [];	
+	var processes = new MemoryManager();
+	var resources = new MemoryManager();	
     var arrows = [];
-	var seq = [];
+	var blocked = running = [];
+	var ready;
     
     this.create = function(type, name){
         if(type === 'process'){
-            processes.push((new Process(name)));	
+            processes.addToMemory((new Process(name, processes.stack.length)), 'first');	
         }else{
-            resources.push((new Resource(name)));	
-        console.log(resources);
+			var units = prompt('Enter Number of units');
+			if(units == null){
+				units = 1;
+			}
+            resources.addToMemory((new Resource(name, resources.stack.length, units)), 'first');
         }
     }    
+	
+	this.ready_queue = function(){
+		ready = processes;	
+	}
+	
+	this.save_session = function(){
+		if(typeof(Storage)!=="undefined") {
+		  localStorage.processes = JSON.stringify(processes);
+		  localStorage.resources = JSON.stringify(resources);
+		 // document.getElementById("result").innerHTML="Last name: " + localStorage.lastname;
+		}else{
+		 // document.getElementById("result").innerHTML="Sorry, your browser does not support web storage...";
+		}
+	}
+	
+	this.restore_session = function(){
+		if(typeof(Storage)!=="undefined") {
+			var pobj = JSON.parse(localStorage.processes);
+			this.restore_processes(pobj);
+			var robj = JSON.parse(localStorage.resources);	
+			console.log(robj.stack[0].id);
+			this.restore_resources(robj);
+		}			
+	}
+	
+	this.restore_processes = function(obj){
+		for(x in obj.stack){
+			processes.addToMemory(((new Process(obj.stack[x].id, obj.stack[x].location)).restore_state(obj.stack[x])), 'first');
+		}
+	}
+	
+	this.restore_resources = function(obj){
+		for(x in obj.stack){
+            resources.addToMemory((new Resource(obj.stack[x].id, obj.stack[x].location, obj.stack[x].units).restore_state(obj.stack[x])), 'first');
+		}
+	}		
     
-    this.error = function(where, message){
+	this.error = function(where, message){
         $(where).prepend('<div class="err">'+message+'</div>');
         setTimeout(function(e){
             $('.err').remove();
@@ -103,110 +195,145 @@ function Command(){
     }
     
      this.resourceExists = function(resource_id){       
-        for(var x in resources){
-            if(resources[x].id === resource_id){
-                return true;   
+        for(var x in resources.stack){
+            if(resources.stack[x] != null && resources.stack[x].id === resource_id){
+                return {bool : true, location : x};   
             }
         }
         console.log('Resource '+resource_id+' does not exist\nYou can create a process by using resource -c [resource_name]');
-        return false;
+        return {bool : false};
     }
     
     this.processExists = function(process_id){
-		for(var x in processes){
-            if(processes[x].id === process_id){
-                return true;   
+		for(var x in processes.stack){
+            if(processes.stack[x] != null && processes.stack[x].id === process_id){
+                return {bool : true, location : x};   
             }
         }
         console.log('Process '+process_id+' does not exist');
-        return false;
+        return {bool : false};
     }    
     
     this.getItemByCords = function(x, y){
-        for(var i in processes){
-            var item = processes[i];
-            console.log('o: '+item.cords.x+' | '+item.cords.y+' m: '+x+' | '+y);
-            if((item.cords.x + item.dimensions.width) > x && (item.cords.x - item.dimensions.width) < x && (item.cords.y + item.dimensions.width) > y && (item.cords.y - item.dimensions.width) < y){
-                return {type : 'process', id : item.id};
-            }
+        for(var i in processes.stack){
+			if(processes.stack[i] != null){
+				var item = processes.stack[i];
+				console.log('o: '+item.cords.x+' | '+item.cords.y+' m: '+x+' | '+y);
+				if((item.cords.x + item.dimensions.width) > x && (item.cords.x - item.dimensions.width) < x && (item.cords.y + item.dimensions.width) > y && (item.cords.y - item.dimensions.width) < y){
+					return {type : 'process', id : item.id};
+				}
+			}
         }
-        for(var i in resources){
-            var item = resources[i];
-            console.log('o: '+item.cords.x+' | '+item.cords.y+' m: '+x+' | '+y);
-            if(item.cords.x <= x && (item.cords.x + item.dimensions.width) > x && item.cords.y <= y && (item.cords.y + item.dimensions.height) > y){
-                return {type : 'resource', id : item.id};
-            }
+        for(var i in resources.stack){
+			if(resources.stack[i] != null){
+				var item = resources.stack[i];
+				console.log('o: '+item.cords.x+' | '+item.cords.y+' m: '+x+' | '+y);
+				if(item.cords.x <= x && (item.cords.x + item.dimensions.width) > x && item.cords.y <= y && (item.cords.y + item.dimensions.height) > y){
+					return {type : 'resource', id : item.id};
+				}
+			}
         }
         return false;
     }   
     
     this.getResource = function(resource_id){
-        for(var x in resources){
-            if(resources[x].id === resource_id){
-                return resources[x];   
-            }
-        }
+		var exists = this.resourceExists(resource_id);
+		if(exists.bool){
+			return resources.stack[exists.location]; 	
+		}
         console.log('Resource '+resource_id+' does not exist\nYou can create a process by using resource -c [resource_name]');
-        return false;
+        return exists.bool;
     }
     
     this.getProcess = function(process_id){
-		for(var x in processes){
-            if(processes[x].id === process_id){
-                return processes[x];   
-            }
+		var exists = this.processExists(process_id);
+		if(exists.bool){
+			return processes.stack[exists.location];  
         }
         console.log('Process '+process_id+' does not exist\nYou can create a process by using process -c [process_name]');
         return false;
     }
 	
-	this.discover = function(obj, innerPos, outerPos){
+	this.discover = function(obj, calling){
 		if(obj == 'self'){
-			if(processes.length == outerPos){
+			if(ready.stack.length == 0 || resources.stack.length){
 				return;	
 			}else{
-				obj = processes[outerPos];	
+				obj = ready.stack[(processes.nextAvailabeLocation(0))];	
+			}
+		}else if(obj.hasOwnProperty('type')){
+			if(obj.type = 'process'){
+				obj = processes.stack[obj.location];
+			}else if(obj.type == 'resource'){
+				obj = resources.stack[obj.location];
 			}
 		}
 		if(obj.constructor == Process){
-			seq.push(obj);
-			if(innerPos == obj.resources.length){
-				return;
-			}else{
-				this.discover(obj.resources[outerPos], innerPos + 1, outerPos);
+			console.log('process - sec');
+			console.log(running);
+			console.log(blocked);
+			if(obj.state == 1){
+				return;	
 			}
+			if(obj.hasAllResourcces()){	
+				obj.changeState(1);
+				running.push(obj);
+				for(x in obj.resources.has){
+					var id = obj.resources.has[x].id;
+					running.push(this.getResource(id))
+					this.release_resource(id, obj.id);
+				}
+				if(calling != false || blocked.length != 0){
+					return this.discover(blocked.pop(), 0); 	
+				}
+				var location = ready.nextAvailabeLocation(obj.location + 1);
+				return this.discover(ready.stack[location], 0);
+			}else{
+				obj.changeState(2);
+				blocked.push(obj);
+				return this.discover(obj.resources.requesting[calling], calling + 1);	
+			}
+			
 		}
 		
 		if(obj.constructor == Resource){
-			seq.push(obj);
-			if(innerPos == obj.processes.length){
-				return;
-			}else{
-				this.discover(obj.processes[outerPos], innerPos, outerPos);
+			console.log('resource - sec');
+			console.log(running);
+			console.log(blocked);
+			if(!obj.reachLimit()){
+				var process = blocked.pop();
+				this.giveResource(process, obj);
+				return this.discover(process, calling);	
 			}
+			return this.discover(obj.processes.assign[0], 0);	
 		}				
+	}
+	
+	this.giveResource = function(process, resource){
+		process.useResource(resource.id, resource.location);
+		resource.dequeueProcess(process.id);
+		resource.assignProcess(process.id, process.location);	
 	}
     
     this.map = function(from, to){
         if(from.type == 'process'){
             var resource = this.getResource(to.id);
-            var process = this.getProcess(from.id);      
+            var process = this.getProcess(from.id); 
         }else{
             var resource = this.getResource(from.id);
-            var process = this.getProcess(to.id);             
+            var process = this.getProcess(to.id);    
         }
         console.log('mapping '+from.id+' to '+to.id);
         var arrow;
-        console.log(resource);
-        if(resource != false && process != false && !resource.processExists(process.id).bool){
+        if(resource != false && process != false){
             var r_cords = resource.cords;   
             var r_dimensions = resource.dimensions; 
             var p_cords = process.cords;   
             var p_dimensions = process.dimensions;
             ctx.beginPath();
             ctx.lineWidth = 3; 
-            if(from.type == 'process' && !process.hasResource(resource.id).bool){
-                if(r_cords.x > p_cords.x){
+            if(from.type == 'process' && !resource.reachMaxRequestLimit(process.id)){
+                if(r_cords.x > p_cords.x ){
                     arrow = new Arrow((p_cords.x + p_dimensions.width), (p_cords.y + (p_dimensions.height * 0.5)), r_cords.x, (r_cords.y + (r_dimensions.height * resource.toSpot.left)), 5);
                     resource.toSpot.left += (resource.toSpot.left == 0.9)? (-0.75): 0.15;
                 }else{
@@ -214,7 +341,8 @@ function Command(){
                     resource.toSpot.right += (resource.toSpot.right == 0.9)? (-0.75)  : 0.15;
                 }
                 arrow.draw();
-                process.requestResource(resource.id, arrow);  
+                process.requestResource(resource.id, resource.location, arrow);  
+				resource.queueProcess(process.id, process.location);
             }else if(!resource.reachLimit() && from.type == 'resource'){   
                 if(r_cords.x < p_cords.x){
                     arrow = new Arrow((r_cords.x + r_dimensions.width * 0.75), (r_cords.y + (r_dimensions.height * resource.fromSpot.right)), (p_cords.x), (p_cords.y + (p_dimensions.height * 0.6)), 5);
@@ -224,8 +352,8 @@ function Command(){
                     resource.fromSpot.left += (resource.fromSpot.left == 0.75)? (-0.5): 0.5;
                 }
                 arrow.draw();
-                resource.addProcess(process.id, arrow);  
-				process.useResource(resource_id);
+                resource.assignProcess(process.id, process.location, arrow);  
+				process.useResource(resource.id, resource.location);
             }
         }
     }
@@ -240,24 +368,25 @@ function Command(){
         this.redraw_resources();
     }
     
-    this.kill_process = function(process_id){
-		for(var x = 0; x < processes.length; x++){
-			if(processes[x].id === process_id){
-                Canvas.clear();
-                processes[x].die();
-				processes.splice(x,1);	
-				this.remove_process(process_id);
-                this.redraw_processes();
-                this.redraw_resources();
-                break;
-            }
-		}
+    this.kill_process = function(process_id, memory_location){
+		console.log(processes.stack);
+		console.log(memory_location);
+		if(processes.stack[memory_location].id === process_id){
+			Canvas.clear();
+			processes.stack[memory_location].die();
+			processes.stack[memory_location] = null;	
+			this.remove_process(process_id);
+			this.redraw_processes();
+			this.redraw_resources();
+		}	
         console.log('Process '+process_id+' removed');
 	}	
 	
 	this.remove_process = function(process_id){
-		for(var x in resources){
-            resources[x].removeProcess(process_id);
+		for(var x in resources.stack){
+			if(resources.stack[x] != null){
+            	resources.stack[x].removeProcess(process_id);
+			}
 		}    
 	}
     
@@ -271,68 +400,106 @@ function Command(){
     }
 	
 	this.remove_resource = function(resource_id){
-		for(var x in processes){
-            processes[x].removeResource(resource_id);
-            processes[x].stopRequesting(resource_id);
+		for(var x in processes.stack){
+			if(processes.stack[x] != null){
+				processes.stack[x].removeResource(resource_id);
+				processes.stack[x].stopRequesting(resource_id);
+			}
 		}       
 	}
 	
-	this.kill_resource = function(resource_id){
-		for(var x = 0; x < resources.length; x++){
-			if(resources[x].id === resource_id){
-                Canvas.clear();
-                resources[x].die();
-                resources.splice(x,1);	
-				this.remove_resource(resource_id);
-                this.redraw_processes();
-                this.redraw_resources();
-			}
+	this.kill_resource = function(resource_id, memory_location){
+		if(resources.stack[memory_location].id === resource_id){
+			Canvas.clear();
+			resources.stack[memory_location].die();
+			resources.stack[memory_location] = null;	
+			this.remove_resource(resource_id);
+			this.redraw_processes();
+			this.redraw_resources();
 		}
         console.log('Resource '+resource_id+' removed');
 	}
         
     this.redraw_processes = function(){
-        for(x in processes){
-            processes[x].die();
-            processes[x].draw();
-            for(var i = 0; i < processes[x].resources.length; i++){
-                    processes[x].resources[i].pointer.draw();
-                
-            }
+        for(x in processes.stack){
+			if(processes.stack[x] != null){
+				processes.stack[x].die();
+				processes.stack[x].draw();
+				for(var i = 0; i < processes.stack[x].resources.requesting.length; i++){
+						processes.stack[x].resources.requesting[i].pointer.draw();
+					
+				}
+			}
         }
     }
     
     this.redraw_resources = function(){
-        for(var x = 0; x < resources.length; x++){
-            resources[x].die();
-            resources[x].draw();
-            for(var i = 0; i < resources[x].processes.length; i++){
-                    resources[x].processes[i].pointer.draw();
-                
-            }
+        for(var x = 0; x < resources.stack.length; x++){
+			if(resources.stack[x] != null){
+				resources.stack[x].die();
+				resources.stack[x].draw();
+				for(var i = 0; i < resources.stack[x].processes.assign.length; i++){
+						resources.stack[x].processes.assign[i].pointer.draw();
+					
+				}
+			}
         }
     }
 }
 
-function Process(process_id){
+function Process(process_id, memory_location){
 	this.elem;
     this.id = process_id;
-	this.state = 'IA';
+	this.state = 0;
     this.resources = {has : [], requesting : []};
 	this.cords = {x : Process.cords[0][0], y : Process.cords[0][1]};
     this.dimensions = {width: 30, height: 0};
+	this.location = memory_location;
     
 	console.log('Process '+this.id+' was created');
     
-    this.requestResource = function(resource_id, pointer){
+    this.requestResource = function(resource_id, memory_location, pointer){
         if(!this.isRequesting(resource_id).bool){
-            this.resources.requesting.push({id: resource_id, pointer: pointer});
+            this.resources.requesting.push({id: resource_id, location: memory_location, pointer: pointer});
             console.log('Process '+this.id+' has requested resource '+resource_id);
         }
     }
 	
-	this.useResource = function(resource_id){
-		this.resources.has.push(resource_id);
+	this.hasAllResources = function(){
+		return (this.resources.requesting == 0)? true : false;
+	}
+	
+	
+	
+	this.restore_state = function(state){
+		this.elem = state.elem;
+		this.units = state.units;
+		this.resources = state.processes;
+		this.location = state.location;	
+		this.state = state.state;	
+		this.id = state.id;	
+	}
+	
+	this.useResource = function(resource_id, memory_location){
+		this.resources.has.push({id : resource_id, location: memory_location});
+	}
+	
+	this.changeState = function(state){
+		switch(state){
+			case 0:
+				this.state = 0;
+				this.elem.color = 'blue';
+				break;
+			case 1:
+				this.state = 1;
+				this.elem.color = 'green';
+				break;
+			default:
+				this.state = 0;
+				this.elem.color = 'blue';
+				break;				
+		}
+		this.draw();
 	}
 	
 	this.removeResource = function(resource_id){        
@@ -344,6 +511,7 @@ function Process(process_id){
 	}
 	
 	this.stopRequesting = function(resource_id){
+		console.log(this.resources.requesting);
         var rexists = this.isRequesting(resource_id);		
         if(rexists.bool){      
             this.resources.requesting.splice(rexists.position, 1);
@@ -354,7 +522,8 @@ function Process(process_id){
 	this.hasResource = function(resource_id){
         for(x in this.resources.has){
             if(this.resources.has[x].id == resource_id){
-                return {bool: true, position : x};
+				console.log(this.resources.has);
+                return {bool: true, position : x, memory_location : this.resources.has[x].location};
             }
         }
         return {bool : false};		
@@ -363,12 +532,12 @@ function Process(process_id){
     this.isRequesting = function(resource_id){
         for(x in this.resources.requesting){
             if(this.resources.requesting[x].id == resource_id){
-                return {bool: true, position : x};
+                return {bool: true, position : x, memory_location : this.resources.requesting[x].location};
             }
         }
         return {bool : false};
     } 
-    
+	
     this.die = function(){
         this.elem.clear_circle();
         Process.cords.unshift([this.cords.x, this.cords.y]);
@@ -388,46 +557,99 @@ function Process(process_id){
 	this.draw();	
 }
 
-function Resource(resource_id){
+function Resource(resource_id, memory_location, units){
+	this.backup_state = [];
 	this.elem;
-	var unit = 1;
+	this.units = units;
 	this.id = resource_id;
-	this.processes = [];	
+	this.processes = {queue : [], assign : []};	
 	this.cords = {x: 400, y: Resource.top[0]};
     this.dimensions = {width: 80, height: 80};
     this.fromSpot = {left : 0.25, right : 0.25};
     this.toSpot = {left : 0.15, right : 0.15};
+	this.location = memory_location;
 	console.log('Resource '+this.id+' was created');
-	
-    this.addProcess = function(process_id, pointer){
-        if(!this.processExists(process_id).bool && !this.reachLimit().bool){        
-            this.processes.push({id : process_id, pointer : pointer});
+		
+    this.assignProcess = function(process_id, memory_location, pointer){
+        if(!this.reachLimit().bool){        
+            this.processes.assign.push({id : process_id, location : memory_location, pointer : pointer});
             console.log(this.processes);
         }
 	}
-    
-	this.removeProcess = function(process_id){
-        var exists = this.processExists(process_id);
-        if(exists.bool){      
-            this.processes.splice(exists.position, 1);
-        }
+	
+	this.backup_state = function(){
+		this.backup_state.push({elem : this.elem, units : this.units, prcoesses : this.processes, location : this.location});
 	}
-	this.removeLastProces = function(){
-		this.processes.pop();
+	
+	this.restore_state = function(state){
+		if(state == 'self'){
+			var state = this.backup_state.pop();
+		}
+		this.elem = state.elem;
+		this.units = state.units;
+		this.processes = state.processes;
+		this.location = state.location;			
 	}
-    this.reachLimit = function(){
-        console.log('units : '+unit+' processes: '+this.processes.length);
-        return (unit == this.processes.length)? true : false;
-    }
-    
-    this.processExists = function(process_id){
-        for(x in this.processes){
-            if(this.processes[x].id == process_id){
-                return {bool: true, position : x};
+	
+	this.queueProcess = function(process_id, memory_location){
+		console.log('dok');
+		if(!this.reachMaxRequestLimit(process_id)){
+		console.log('dok');
+			this.processes.queue.push({id : process_id, location : memory_location});
+		}
+	}
+	
+	this.isAssignedTo = function(process_id){
+        for(var x = 0; x < this.processes.assign.length; x++){
+            if(this.processes.assign[x].id == process_id){
+                return {bool: true, position : x, memory_location : this.processes.assign[x].location};				
             }
         }
-        return {bool : false};
+        return {bool : false};		
+	}
+	
+	this.isRequestedBy = function(process_id){
+        for(var x = 0; x < this.processes.queue.length; x++){
+            if(this.processes.queue[x].id == process_id){
+                return {bool: true, position : x, memory_location : this.processes.queue[x].location};
+            }
+        }
+        return {bool : false};				
+	}
+		
+	this.removeProcess = function(process_id){
+        var exists = this.isAssignedTo(process_id);
+        if(exists.bool){      
+            this.processes.assign.splice(exists.position, 1);
+        }
+	}
+	
+	this.dequeue = function(process_id){
+		var exists = this.isRequestedBy(process_id);
+		if(exists.bool){
+			this.processes.queue.splice(exists.position, 1);
+		}
+	}
+	
+    this.reachLimit = function(){
+        console.log('units : '+this.units+' processes: a '+this.processes.assign.length);
+        return this.units == this.processes.assign.length;
     }
+	
+	this.reachMaxRequestLimit = function(process_id){
+		return (this.units == (this.processOccurrence(this.processes.queue, process_id) + this.processOccurrence(this.processes.assign, process_id)));
+	}
+	
+	this.processOccurrence = function(stack, process_id){
+		var count = 0;
+		for(x in stack){
+			if(stack[x].id == process_id){
+				count ++;
+			}
+		}
+        console.log('occurrence for c '+process_id+' : '+count);
+		return count;
+	}
 	
 	this.die = function(){
         this.elem.clear_rect();
@@ -603,8 +825,7 @@ Canvas.mouseMoveEvent = function (obj, from, to) {
     
     ctx.canvas.addEventListener('mousedown', function(e){
         last_mouse.x = mouse.x; 
-        last_mouse.y = mouse.y;      
-        console.log(mouse.x);
+        last_mouse.y = mouse.y;     
         source = obj.getItemByCords(last_mouse.x, last_mouse.y);
         console.log(source);
         if(source.type == from){
@@ -620,7 +841,6 @@ Canvas.mouseMoveEvent = function (obj, from, to) {
     ctx.canvas.addEventListener('mouseup', function(e){
         mouse.x = e.clientX - ctx.canvas.offsetLeft; 
         mouse.y = e.clientY - ctx.canvas.offsetTop; 
-        console.log(mouse.x);
         destination = obj.getItemByCords(mouse.x, mouse.y);
         console.log(destination);
         if(destination.type == to && enable){
